@@ -37,6 +37,7 @@ PRICES = {
     "wechat_mp.accounts.search": Decimal("0.58"),  # charged per account returned; this is the per-call cap
     "wechat_mp.accounts.articles.list": Decimal("0.02"),
     "wechat_mp.articles.get": Decimal("0.02"),
+    "wechat_mp.articles.metrics": Decimal("0.02"),
 }
 ARTICLES_PER_PAGE = 10
 RETRY_STATUSES = {429, 500, 502, 503, 504}
@@ -205,7 +206,7 @@ def find_account(ok: Okdata, name: str, pick: int) -> str:
 
 
 def write_index(out: Path, rows: List[Dict[str, Any]]) -> None:
-    fields = ["published_at", "title", "url", "likes", "views", "file"]
+    fields = ["published_at", "title", "url", "views", "likes", "recommends", "shares", "file"]
     with (out / "index.csv").open("w", newline="", encoding="utf-8-sig") as f:
         writer = csv.DictWriter(f, fieldnames=fields)
         writer.writeheader()
@@ -216,20 +217,42 @@ def charge_note(err: ApiError) -> str:
     return "不扣费" if err.charged is False else "是否扣费未知：上一次请求可能还在处理"
 
 
-def plan_cost(prices: Dict[str, Decimal], *, search: bool, pages: int, full: bool) -> Decimal:
+def plan_cost(prices: Dict[str, Decimal], *, search: bool, pages: int, full: bool, metrics: bool = False) -> Decimal:
     cost = prices["wechat_mp.accounts.articles.list"] * pages
     if search:
         cost += prices["wechat_mp.accounts.search"]
     if full:
         cost += prices["wechat_mp.articles.get"] * pages * ARTICLES_PER_PAGE
+    if metrics:
+        cost += prices["wechat_mp.articles.metrics"] * pages * ARTICLES_PER_PAGE
     return cost
+
+
+def article_numbers(ok: "Okdata", post: Dict[str, Any], fetch: bool) -> Dict[str, Any]:
+    """Reads, likes, recommends (在看) and shares. The article list rarely carries them; --metrics reads each
+    article's own numbers, one call per article."""
+    listed = post.get("metrics") or {}
+    numbers = {"views": listed.get("views"), "likes": listed.get("likes"), "recommends": None, "shares": listed.get("shares")}
+    if not fetch or not post.get("url"):
+        return numbers
+    try:
+        item = ok.call("wechat_mp.articles.metrics", url=post["url"])["data"]["item"]
+    except ApiError as err:
+        if err.code in ("unauthorized", "insufficient_balance", "budget_reached"):
+            raise
+        print(f"阅读数没取到（{err.code}，{charge_note(err)}）：{post.get('title')}", file=sys.stderr)
+        return numbers
+    m = item.get("metrics") or {}
+    return {"views": m.get("views"), "likes": m.get("likes"), "recommends": (item.get("ext") or {}).get("recommends"),
+            "shares": m.get("shares")}
 
 
 def run(args: argparse.Namespace, ok: Okdata) -> int:
     prices = ok.prices()
-    most = plan_cost(prices, search=bool(args.name), pages=args.pages, full=args.full)
+    most = plan_cost(prices, search=bool(args.name), pages=args.pages, full=args.full, metrics=args.metrics)
     print(f"计划：{'搜索公众号 1 次 + ' if args.name else ''}文章列表最多 {args.pages} 页"
-          f"{f' + 全文最多 {args.pages * ARTICLES_PER_PAGE} 篇' if args.full else ''}，最多花 ${most}。"
+          f"{f' + 全文最多 {args.pages * ARTICLES_PER_PAGE} 篇' if args.full else ''}"
+          f"{f' + 阅读数最多 {args.pages * ARTICLES_PER_PAGE} 篇' if args.metrics else ''}，最多花 ${most}。"
           "已经存过全文的文章不会再取。", file=sys.stderr)
     if args.dry_run:
         return 0
@@ -259,9 +282,8 @@ def run(args: argparse.Namespace, ok: Okdata) -> int:
                     print(f"全文没取到（{err.code}，{charge_note(err)}）：{post.get('title')}", file=sys.stderr)
             path.write_text(to_markdown(post, full_text), encoding="utf-8")
             print(f"已保存：{path.name}", file=sys.stderr)
-        metrics = post.get("metrics") or {}
         rows.append({"published_at": post.get("published_at"), "title": post.get("title"), "url": post.get("url"),
-                     "likes": metrics.get("likes"), "views": metrics.get("views"), "file": path.name})
+                     **article_numbers(ok, post, args.metrics), "file": path.name})
     write_index(out, rows)
     print(f"完成：{len(rows)} 篇，索引在 {out / 'index.csv'}。实际花费 ${ok.spent}。", file=sys.stderr)
     return 0
@@ -275,6 +297,8 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p.add_argument("--pick", type=int, default=1, help="用 --name 搜到多个时，选第几个（默认 1）")
     p.add_argument("--pages", type=int, default=3, help="文章列表取几页，每页约 10 篇（默认 3）")
     p.add_argument("--full", action=argparse.BooleanOptionalAction, default=True, help="是否取全文（默认取）")
+    p.add_argument("--metrics", action="store_true",
+                   help="再取每篇的阅读、点赞、在看、分享（每篇多一次调用，$0.02；文章列表本身一般不带这些数）")
     p.add_argument("--out", help="输出目录（默认 export/<公众号>）")
     p.add_argument("--budget", type=Decimal, default=Decimal("1"), help="最多花多少美元，超过就不跑（默认 1）")
     p.add_argument("--dry-run", action="store_true", help="只算钱，不调用")

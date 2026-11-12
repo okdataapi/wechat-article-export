@@ -18,7 +18,8 @@ os.environ["NO_PROXY"] = "*"  # keep requests on this machine even with a system
 import export  # noqa: E402
 from mock_okdata import TEST_KEY, MockOkdata, error, ok  # noqa: E402
 
-PRICES = {"wechat_mp.accounts.search": "0.58", "wechat_mp.accounts.articles.list": "0.04", "wechat_mp.articles.get": "0.02"}
+PRICES = {"wechat_mp.accounts.search": "0.58", "wechat_mp.accounts.articles.list": "0.04", "wechat_mp.articles.get": "0.02",
+          "wechat_mp.articles.metrics": "0.02"}
 
 
 def article(i: int) -> dict:
@@ -36,6 +37,8 @@ class ExportTest(unittest.TestCase):
             "/v1/wechat_mp/articles/get": lambda q: (404, error("not_found")) if q["url"].endswith("a3")
             else (200, ok("get", item={"text": f"全文 {q['url']}"}, amount="0.02")),
             "/v1/wechat_mp/accounts/search": lambda q: (200, ok("search", items=[{"id": "gh_x", "name": "测试号"}], amount="0.058")),
+            "/v1/wechat_mp/articles/metrics": lambda q: (200, ok("metrics", item={
+                "id": q["url"][-2:], "metrics": {"views": 5000, "likes": 50, "shares": 7}, "ext": {"recommends": 12}}, amount="0.02")),
         }, prices=PRICES)
         export.API = self.api.url
         self.tmp = tempfile.TemporaryDirectory()
@@ -68,6 +71,18 @@ class ExportTest(unittest.TestCase):
         paid = self.api.paid()
         self.assertTrue(all(r["headers"]["authorization"] == f"Bearer {TEST_KEY}" for r in paid))
         self.assertEqual(len({r["headers"]["idempotency-key"] for r in paid}), len(paid))
+
+    def test_metrics_reads_each_articles_numbers(self) -> None:
+        code, log = self.run_export("--account", "gh_x", "--pages", "3", "--no-full", "--metrics", "--out", str(self.out))
+        self.assertEqual(code, 0, log)
+        rows = list(csv.DictReader((self.out / "index.csv").read_text(encoding="utf-8-sig").splitlines()))
+        self.assertEqual({(r["views"], r["likes"], r["recommends"], r["shares"]) for r in rows}, {("5000", "50", "12", "7")})
+        self.assertEqual(sum(r["path"] == "/v1/wechat_mp/articles/metrics" for r in self.api.paid()), 3)
+
+    def test_without_metrics_no_metrics_calls(self) -> None:
+        code, log = self.run_export("--account", "gh_x", "--pages", "3", "--no-full", "--out", str(self.out))
+        self.assertEqual(code, 0, log)
+        self.assertFalse(any(r["path"] == "/v1/wechat_mp/articles/metrics" for r in self.api.paid()))
 
     def test_second_run_skips_saved_articles(self) -> None:
         self.run_export("--account", "gh_x", "--out", str(self.out))
