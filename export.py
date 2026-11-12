@@ -35,7 +35,7 @@ API = os.environ.get("OKDATA_BASE_URL", "https://api.okdata.online").rstrip("/")
 # Fallback prices (USD) if the free catalog cannot be read; the live catalog wins.
 PRICES = {
     "wechat_mp.accounts.search": Decimal("0.58"),  # charged per account returned; this is the per-call cap
-    "wechat_mp.accounts.articles.list": Decimal("0.04"),
+    "wechat_mp.accounts.articles.list": Decimal("0.02"),
     "wechat_mp.articles.get": Decimal("0.02"),
 }
 ARTICLES_PER_PAGE = 10

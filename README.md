@@ -47,11 +47,11 @@ export/gh_363b924965e9/
 
 | 操作 | 价格 |
 |---|---|
-| 文章列表，每页约 10 篇 | $0.04 / 页 |
+| 文章列表，每页约 10 篇 | $0.02 / 页 |
 | 一篇文章的全文 | $0.02 / 篇 |
 | 按名字搜公众号（只有用 `--name` 时） | 每个结果 $0.058，一次最多 $0.58 |
 
-例：`--pages 3` 导出约 30 篇带全文，最多 3 × 0.04 + 30 × 0.02 = **$0.72**。调用失败不扣钱，脚本开跑前会先打印最多花多少。
+例：`--pages 3` 导出约 30 篇带全文，最多 3 × 0.02 + 30 × 0.02 = **$0.66**。调用失败不扣钱，脚本开跑前会先打印最多花多少。
 
 ## 说明
 
@@ -71,7 +71,7 @@ export/gh_363b924965e9/
 Export a WeChat Official Account's articles to Markdown files plus a CSV index, by account name or `gh_` ID.
 No QR login, no admin access, no cookies. One Python 3.9+ file, standard library only. It prints the most a run
 can cost before calling anything, refuses runs over `--budget` (default $1), and skips articles already saved.
-List pages cost $0.04 (about 10 articles), full text $0.02 per article; failed calls are free.
+List pages cost $0.02 (about 10 articles), full text $0.02 per article; failed calls are free.
 
 Needs an okdata key in `OKDATA_API_KEY`: [sign up](https://okdata.online/signup/?src=gh-wechat-article-export).
 
