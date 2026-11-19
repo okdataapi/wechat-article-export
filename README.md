@@ -53,7 +53,7 @@ export/gh_363b924965e9/
 | 一篇文章的阅读、点赞、在看、分享（`--metrics`） | $0.02 / 篇 |
 | 按名字搜公众号（只有用 `--name` 时） | 每个结果 $0.058，一次最多 $0.58 |
 
-例：`--pages 3` 导出约 30 篇带全文，最多 3 × 0.02 + 30 × 0.02 = **$0.66**；再加 `--metrics` 是 **$1.26**。请求到了数据源的调用，返回为空、查不到或出错也照常计费；参数错误这类还没请求数据源就被拦下的不扣费。脚本开跑前会先打印最多花多少。
+例：`--pages 3` 导出约 30 篇带全文，最多 3 × 0.02 + 30 × 0.02 = **$0.66**；再加 `--metrics` 是 **$1.26**。脚本开跑前会先打印最多花多少。
 
 ## 说明
 
@@ -73,7 +73,7 @@ export/gh_363b924965e9/
 Export a WeChat Official Account's articles to Markdown files plus a CSV index, by account name or `gh_` ID.
 No QR login, no admin access, no cookies. One Python 3.9+ file, standard library only. It prints the most a run
 can cost before calling anything, refuses runs over `--budget` (default $1), and skips articles already saved.
-List pages cost $0.02 (about 10 articles), full text $0.02 per article; add `--metrics` for each article's reads, likes, recommends and shares ($0.02 per article). A call that reaches the data source is charged even when it comes back empty, not found or failed; calls stopped before that (bad parameters, low balance) are free.
+List pages cost $0.02 (about 10 articles), full text $0.02 per article; add `--metrics` for each article's reads, likes, recommends and shares ($0.02 per article).
 
 Needs an okdata key in `OKDATA_API_KEY`: [sign up](https://okdata.online/signup/?src=gh-wechat-article-export).
 
