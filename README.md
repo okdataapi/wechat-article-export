@@ -59,9 +59,9 @@ export/gh_363b924965e9/
 
 ## 说明
 
-- 这是 [okdata](https://okdata.online/zh/) 的示例工具，不是微信或腾讯的官方项目。脚本只调用 okdata 的接口，本身没有爬虫。
-  用到的接口：[公众号历史文章](https://okdata.online/zh/apis/wechat_mp/accounts/articles/list/)、
-  [文章详情](https://okdata.online/zh/apis/wechat_mp/articles/get/)、[文章阅读数](https://okdata.online/zh/apis/wechat_mp/articles/metrics/)、[公众号搜索](https://okdata.online/zh/apis/wechat_mp/accounts/search/)。
+- 这是 [okdata](https://okdata.online/zh/?src=gh-wechat-article-export) 的示例工具，不是微信或腾讯的官方项目。脚本只调用 okdata 的接口，本身没有爬虫。
+  用到的接口：[公众号历史文章](https://okdata.online/zh/apis/wechat_mp/accounts/articles/list/?src=gh-wechat-article-export)、
+  [文章详情](https://okdata.online/zh/apis/wechat_mp/articles/get/?src=gh-wechat-article-export)、[文章阅读数](https://okdata.online/zh/apis/wechat_mp/articles/metrics/?src=gh-wechat-article-export)、[公众号搜索](https://okdata.online/zh/apis/wechat_mp/accounts/search/?src=gh-wechat-article-export)。
 - 只导出公开发布的文章。请遵守原作者的版权，导出内容用于个人研究和归档，不要整篇转载。
 - 想在 AI 里直接用（Claude Code、Cursor 等），可以接 okdata 的远程 MCP：`https://api.okdata.online/mcp`，
   或者装 [okdataapi/skills](https://github.com/okdataapi/skills)。
