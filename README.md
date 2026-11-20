@@ -1,5 +1,7 @@
 # wechat-article-export：公众号历史文章导出 Markdown / CSV
 
+[English](#english): export WeChat Official Account articles to Markdown and CSV from anywhere, no login.
+
 把一个微信公众号发过的文章批量存成 Markdown 文件，再附一张 CSV 索引（标题、发布时间、链接；加 `--metrics` 还有阅读、点赞、在看、分享）。
 **不用扫码登录，不用公众号后台，不用抓包或 Cookie。**一个 Python 文件，只用标准库，Python 3.9 以上就能跑。
 
@@ -70,15 +72,62 @@ export/gh_363b924965e9/
 
 ## English
 
-Export a WeChat Official Account's articles to Markdown files plus a CSV index, by account name or `gh_` ID.
-No QR login, no admin access, no cookies. One Python 3.9+ file, standard library only. It prints the most a run
-can cost before calling anything, refuses runs over `--budget` (default $1), and skips articles already saved.
-List pages cost $0.02 (about 10 articles), full text $0.02 per article; add `--metrics` for each article's reads, likes, recommends and shares ($0.02 per article).
+Export a WeChat Official Account (公众号) to Markdown files plus a CSV index: every article's full text, title,
+publish time and link, and optionally its reads, likes, recommends and shares. No QR login, no admin access to the
+account, no cookies, no Chinese phone number. One Python 3.9+ file, standard library only.
 
-Needs an okdata key in `OKDATA_API_KEY`: [sign up](https://okdata.online/signup/?src=gh-wechat-article-export).
+WeChat Official Accounts are where Chinese companies, brands, media and government bodies publish first. Those
+articles are hard to find from outside WeChat, so this is a way to keep a searchable copy:
+a competitor's announcements, a regulator's notices, an industry newsletter, or a corpus for an AI to summarise.
+
+### Run it
+
+Get a key at [okdata.online](https://okdata.online/signup/?src=gh-wechat-article-export) (pay per call, no
+subscription), then:
 
 ```bash
-python3 export.py --account gh_363b924965e9 --pages 3
+git clone https://github.com/okdataapi/wechat-article-export
+cd wechat-article-export
+export OKDATA_API_KEY=okd_...        # keep it out of code and commits
+
+python3 export.py --account gh_363b924965e9 --pages 3   # by original ID (starts with gh_) or WeChat ID
+python3 export.py --name 36氪 --dry-run                 # only know the name: see what it costs first
+python3 export.py --name 36氪 --pages 2                 # several matches? --pick 2 takes the second
 ```
 
-Unofficial; public articles only, for personal research and archiving. MIT licence.
+The output is one folder per account:
+
+```
+export/gh_363b924965e9/
+├── index.csv                     # one row per article: published, title, link, reads, likes, recommends, shares, file
+├── 2026-11-05-<title>.md         # YAML front matter (title, link, published, account), then the full text
+└── 2026-11-04-<title>.md
+```
+
+| Flag | |
+|---|---|
+| `--account` / `--name` | One of the two. With the original ID (starts with `gh_`) or the WeChat ID no search is needed |
+| `--pages N` | Pages of the article list, about 10 articles each (default 3) |
+| `--no-full` | Titles and summaries only, no full text (much cheaper) |
+| `--metrics` | Also fetch reads, likes, recommends and shares, one more call per article |
+| `--budget USD` | Refuse to start if the run could cost more (default $1) |
+| `--dry-run` | Print the cost and stop; needs no key |
+
+Running it again is safe: articles already saved with full text are skipped and cost nothing.
+
+### What it costs
+
+The article list is $0.02 per page of about 10 articles, full text $0.02 per article, metrics $0.02 per article,
+and a search by name $0.058 per result (at most $0.58). `--pages 3` with full text, about 30 articles, is at most
+3 × 0.02 + 30 × 0.02 = **$0.66**; with `--metrics` **$1.26**. The script reads the current prices and prints the
+most a run can cost before calling anything.
+
+### Reading it in English
+
+The articles are in Chinese. Point an LLM at the folder and ask for what you need, for example "summarise each
+article in two English sentences and list the products and prices mentioned", or connect okdata's remote MCP
+(`https://api.okdata.online/mcp`, see [okdata.online/mcp](https://okdata.online/mcp/?src=gh-wechat-article-export))
+to Claude or Cursor and let the assistant fetch and translate the articles itself.
+
+Unofficial and not affiliated with WeChat or Tencent; the script only calls the okdata API. Public articles only:
+respect the authors' copyright and use the exports for research and archiving, not republishing. MIT licence.
