@@ -268,6 +268,18 @@ def run(args: argparse.Namespace, ok: Okdata) -> int:
     out = Path(args.out or f"export/{slug(account)}")
     out.mkdir(parents=True, exist_ok=True)
     rows: List[Dict[str, Any]] = []
+    try:
+        export_rows(ok, args, account, out, rows)
+    finally:
+        # Write what was already paid for, even when the budget or balance stops the run halfway.
+        if rows:
+            write_index(out, rows)
+            print(f"索引在 {out / 'index.csv'}（{len(rows)} 篇）。", file=sys.stderr)
+    print(f"完成：{len(rows)} 篇。实际花费 ${ok.spent}。", file=sys.stderr)
+    return 0
+
+
+def export_rows(ok: Okdata, args: argparse.Namespace, account: str, out: Path, rows: List[Dict[str, Any]]) -> None:
     for post in list_articles(ok, account, args.pages):
         path = article_path(out, post)
         if path.exists() and "（只有摘要" not in path.read_text(encoding="utf-8"):
@@ -285,9 +297,6 @@ def run(args: argparse.Namespace, ok: Okdata) -> int:
             print(f"已保存：{path.name}", file=sys.stderr)
         rows.append({"published_at": post.get("published_at"), "title": post.get("title"), "url": post.get("url"),
                      **article_numbers(ok, post, args.metrics), "file": path.name})
-    write_index(out, rows)
-    print(f"完成：{len(rows)} 篇，索引在 {out / 'index.csv'}。实际花费 ${ok.spent}。", file=sys.stderr)
-    return 0
 
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:

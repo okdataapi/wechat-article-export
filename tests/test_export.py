@@ -137,6 +137,7 @@ class HostileDataTest(unittest.TestCase):
         api = MockOkdata({
             "/v1/wechat_mp/accounts/articles/list": lambda q: (200, ok("list", items=items, amount="0.04")),
             "/v1/wechat_mp/articles/get": get or (lambda q: (200, ok("get", item={"text": "全文"}, amount="0.02"))),
+            "/v1/wechat_mp/articles/metrics": lambda q: (200, ok("metrics", item={"metrics": {"views": 5000}}, amount="0.02")),
         }, prices=PRICES)
         export.API = api.url
         self.addCleanup(api.close)
@@ -168,6 +169,17 @@ class HostileDataTest(unittest.TestCase):
         self.run_export("--pages", "1")
         with (self.out / "index.csv").open(encoding="utf-8-sig") as f:
             self.assertTrue(next(csv.DictReader(f))["title"].startswith("'="))
+
+    def test_budget_stop_still_writes_the_index_it_paid_for(self) -> None:
+        # One page can hold far more than 10 articles; the run stops at the budget halfway down it.
+        self.serve([article(i % 9 + 1) | {"id": f"a{i}", "url": f"https://mp.weixin.qq.com/s/a{i}", "title": f"第{i}篇"}
+                    for i in range(25)])
+        code, log = self.run_export("--pages", "1", "--no-full", "--metrics", "--budget", "0.5")
+        self.assertEqual(code, 1)
+        with (self.out / "index.csv").open(encoding="utf-8-sig") as f:
+            rows = list(csv.DictReader(f))
+        self.assertGreater(len(rows), 10)
+        self.assertEqual(rows[0]["views"], "5000")
 
     def test_empty_balance_stops_instead_of_writing_summaries(self) -> None:
         api = self.serve([article(1), article(2), article(3)], get=lambda q: (402, error("insufficient_balance", retry="after_fix")))
